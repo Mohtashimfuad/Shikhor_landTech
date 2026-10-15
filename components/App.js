@@ -19,23 +19,23 @@ const D={bn:{home:'হোম',capture:'প্রমাণ জমা',map:'স্
 const Ctx=createContext();export const useApp=()=>useContext(Ctx);
 const PROTECTED=['/capture','/verify','/claim','/admin','/map'];
 export default function App({children}){
- const [user,setUser]=useState(null),[role,setRole]=useState('citizen'),[ready,setReady]=useState(false),[lang,setLang]=useState('bn'),[fs,setFs]=useState(16);
+ const [user,setUser]=useState(null),[role,setRole]=useState('citizen'),[ready,setReady]=useState(false),[lang,setLang]=useState('bn'),[langReady,setLangReady]=useState(false),[fs,setFs]=useState(16);
  const path=usePathname(),router=useRouter();
  useEffect(()=>{sb.auth.getSession().then(({data})=>{setUser(data.session?.user??null);setReady(true)});
   const {data:l}=sb.auth.onAuthStateChange((_,s)=>setUser(s?.user??null));
-  try{setLang(localStorage.getItem('lang')||'bn');setFs(+localStorage.getItem('fs')||16);const th=localStorage.getItem('theme');if(th)document.documentElement.dataset.theme=th}catch(e){}
+  try{setLang(localStorage.getItem('lang')||'bn');setFs(+localStorage.getItem('fs')||16);const th=localStorage.getItem('theme');if(th)document.documentElement.dataset.theme=th}catch(e){}finally{setLangReady(true)}
   return()=>l.subscription.unsubscribe()},[]);
  useEffect(()=>{if(!user){setRole('citizen');return}sb.from('profiles').select('role').eq('id',user.id).single().then(({data})=>setRole(data?.role||'citizen'))},[user]);
  useEffect(()=>{if(ready&&!user&&PROTECTED.some(p=>path.startsWith(p)))router.replace('/login')},[ready,user,path]);
- useEffect(()=>{document.documentElement.style.setProperty('--fs',fs+'px');document.documentElement.lang=lang;try{localStorage.setItem('fs',fs);localStorage.setItem('lang',lang)}catch(e){}},[fs,lang]);
+ useEffect(()=>{document.documentElement.style.setProperty('--fs',fs+'px');document.documentElement.lang=lang;if(!langReady)return;try{localStorage.setItem('fs',fs);localStorage.setItem('lang',lang)}catch(e){}},[fs,lang,langReady]);
  const t=D[lang];
  const theme=()=>{const d=document.documentElement,dark=d.dataset.theme?d.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;d.dataset.theme=dark?'light':'dark';try{localStorage.setItem('theme',d.dataset.theme)}catch(e){}};
  const nav=[['/',t.home],['/capture',t.capture],['/map',t.map],['/verify',t.verify],['/claim',t.claim],...(role==='admin'?[['/admin',t.admin]]:[])];
- return(<Ctx.Provider value={{user,role,ready,t,lang}}>
-  <header><div className="nav"><Link href="/" className="brand">🌊 ভাঙন প্রমাণ</Link>
+ return(<Ctx.Provider value={{user,role,ready,t,lang,setLang}}>
+  {path!=='/'&&<header><div className="nav"><Link href="/" className="brand"><span className="workspaceBrand"><b>শিকড়</b><small>SHIKOR</small></span></Link>
    <nav className="links">{nav.map(([h,l])=><Link key={h} href={h} className={path===h?'on':''}>{l}</Link>)}</nav>
-   <div className="tools"><button className="ic" onClick={()=>setLang(lang==='bn'?'en':'bn')} aria-label="Language">{lang==='bn'?'EN':'বাং'}</button>
+   <div className="tools">
     <button className="ic" onClick={()=>setFs(Math.max(14,fs-2))} aria-label="A-">A−</button><button className="ic" onClick={()=>setFs(Math.min(20,fs+2))} aria-label="A+">A+</button>
     <button className="ic" onClick={theme} aria-label="Theme">◐</button>
-    {user?<button className="btn sec" onClick={()=>sb.auth.signOut()}>{t.logout}</button>:<Link className="btn" href="/login">{t.login}</Link>}</div></div></header>
-  <main>{children}</main></Ctx.Provider>)}
+    {user?<button className="btn sec" onClick={()=>sb.auth.signOut()}>{t.logout}</button>:<Link className="btn" href="/login">{t.login}</Link>}</div></div></header>}
+  <main className={path==='/'?'landingMain':''}>{children}</main></Ctx.Provider>)}
